@@ -85,9 +85,14 @@ async function loadExercises(muscle) {
       },
     ];
 
-    setThisWeekWorkouts(
-      demoData.filter((log) => log.NumOfWeek === 8 && log.Year === 2026),
-    );
+    // Load saved workouts from localStorage
+    const savedData = localStorage.getItem("workout_logs");
+    const savedWorkouts = savedData ? JSON.parse(savedData) : [];
+
+    // Combine demo data with saved workouts
+    const allWorkouts = [...demoData, ...savedWorkouts];
+
+    setThisWeekWorkouts(allWorkouts);
   }, []);
 
   const currentWeek = 8;
