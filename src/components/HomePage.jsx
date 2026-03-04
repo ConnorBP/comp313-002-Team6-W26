@@ -9,67 +9,65 @@ function HomePage() {
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
 
-  // ISO week calculation
+  // Must match the algorithm used in the Workout model
   const getWeekNumber = (date) => {
-    const temp = new Date(date);
-    const dayNum = temp.getUTCDay() || 7;
-    temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
-    return Math.ceil(((temp - yearStart) / 86400000 + 1) / 7);
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
   };
 
   const currentWeek = getWeekNumber(currentDate);
 
-  // Load workouts from localStorage (or seed demo data)
+  // Reads all workouts from localStorage and returns only those matching the given year and week number
+  const getThisWeekWorkouts = (year, weekNumber) => {
+    const stored = localStorage.getItem("workout_logs");
+    if (!stored) return [];
+    try {
+      const parsed = JSON.parse(stored);
+      return parsed.filter(
+        (log) => log.NumOfWeek === weekNumber && log.Year === year
+      );
+    } catch (err) {
+      console.error("Failed to parse workout_logs from localStorage:", err);
+      return [];
+    }
+  };
+
+  // Seed sample data into localStorage if it is empty
   useEffect(() => {
-    let stored = localStorage.getItem("workout_logs");
-
-    if (!stored) {
-      // Seed demo data
-      const demoData = [];
-
-      const exercises = [
-        new Exercise("Incline Bench Press", "chest", 3, 12),
-        new Exercise("Cable Fly", "chest", 3, 15),
-        new Exercise("Tricep Pushdown", "triceps", 3, 12),
-        new Exercise("Lat Pulldown", "back", 4, 10),
-        new Exercise("Seated Row", "back", 3, 12),
-        new Exercise("Barbell Curl", "biceps", 3, 12),
-        new Exercise("Hammer Curl", "biceps", 3, 12),
-        new Exercise("Squats", "legs", 4, 8),
-        new Exercise("Leg Press", "legs", 3, 12),
-        new Exercise("Calf Raise", "calves", 4, 15),
-        new Exercise("Shoulder Press", "shoulders", 3, 12),
-        new Exercise("Lateral Raise", "shoulders", 3, 15),
+    if (!localStorage.getItem("workout_logs")) {
+      const sampleExercises = [
+        new Exercise(1, "Incline Bench Press", "chest", 3, 12),
+        new Exercise(2, "Cable Fly", "chest", 3, 15),
+        new Exercise(3, "Tricep Pushdown", "triceps", 3, 12),
+        new Exercise(4, "Lat Pulldown", "back", 4, 10),
+        new Exercise(5, "Seated Row", "back", 3, 12),
+        new Exercise(6, "Barbell Curl", "biceps", 3, 12),
+        new Exercise(7, "Hammer Curl", "biceps", 3, 12),
+        new Exercise(8, "Squats", "legs", 4, 8),
+        new Exercise(9, "Leg Press", "legs", 3, 12),
+        new Exercise(10, "Calf Raise", "calves", 4, 15),
+        new Exercise(11, "Shoulder Press", "shoulders", 3, 12),
+        new Exercise(12, "Lateral Raise", "shoulders", 3, 15),
       ];
 
-      // Create multiple demo sessions
+      const demoData = [];
       for (let i = 0; i < 5; i++) {
-        const sessionExercises = exercises.slice(i, i + 5);
-        const workout = new Workout(sessionExercises);
-        // Adjust createDate to past days
-        workout.createDate = new Date(Date.now() - i * 86400000).toISOString();
-        workout.NumOfWeek = getWeekNumber(new Date(workout.createDate));
-        workout.Year = new Date(workout.createDate).getFullYear();
+        const workout = new Workout(sampleExercises.slice(i, i + 5));
+        workout.createDate = new Date(Date.now() - i * 86400000).toLocaleDateString("en-US");
+        workout.NumOfWeek = getWeekNumber(new Date(Date.now() - i * 86400000));
+        workout.Year = new Date(Date.now() - i * 86400000).getFullYear();
         demoData.push(workout);
       }
 
       localStorage.setItem("workout_logs", JSON.stringify(demoData));
-      stored = JSON.stringify(demoData);
-      console.log("✅ Demo data seeded");
     }
+  }, []);
 
-    // Load + filter by current week/year
-    try {
-      const parsed = JSON.parse(stored);
-      const filtered = parsed.filter(
-        (log) => log.NumOfWeek === currentWeek && log.Year === currentYear
-      );
-      setThisWeekWorkouts(filtered);
-    } catch (err) {
-      console.error("Failed to parse localStorage:", err);
-      setThisWeekWorkouts([]);
-    }
+  // Load workouts from localStorage on mount
+  useEffect(() => {
+    const filtered = getThisWeekWorkouts(currentYear, currentWeek);
+    setThisWeekWorkouts(filtered);
   }, [currentWeek, currentYear]);
 
   // Compute summary automatically
@@ -95,16 +93,17 @@ function HomePage() {
 
   const handleLogSampleWorkout = () => {
     const exercises = [
-      new Exercise("Incline Bench Press", "chest", 3, 12),
-      new Exercise("Barbell Curl", "biceps", 3, 12),
+      new Exercise(1, "Incline Bench Press", "chest", 3, 12),
+      new Exercise(2, "Barbell Curl", "biceps", 3, 12),
     ];
     const newWorkout = new Workout(exercises);
-    newWorkout.NumOfWeek = getWeekNumber(new Date());
-    newWorkout.Year = new Date().getFullYear();
 
-    const updatedHistory = [...thisWeekWorkouts, newWorkout];
-    localStorage.setItem("workout_logs", JSON.stringify(updatedHistory));
-    setThisWeekWorkouts(updatedHistory);
+    const stored = localStorage.getItem("workout_logs");
+    const allWorkouts = stored ? JSON.parse(stored) : [];
+    allWorkouts.push(newWorkout);
+    localStorage.setItem("workout_logs", JSON.stringify(allWorkouts));
+
+    setThisWeekWorkouts(getThisWeekWorkouts(currentYear, currentWeek));
     console.log("Logged new workout:", newWorkout);
   };
 
