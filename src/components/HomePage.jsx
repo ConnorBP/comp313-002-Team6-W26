@@ -6,6 +6,10 @@ function HomePage() {
   const [thisWeekWorkouts, setThisWeekWorkouts] = useState([]);
   const [summary, setSummary] = useState({});
 
+  //use to store the week list 
+  const [weekList, setWeekList] = useState([]);
+  const [currentWeekNum, setCurrentWeekNum] = useState(0);
+
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
 
@@ -33,6 +37,57 @@ function HomePage() {
     }
   };
 
+  const getWeekList = () => {
+    const stored = localStorage.getItem("workout_logs");
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored);
+
+      const weeks = [...new Set(parsed.map(w => w.NumOfWeek))].sort((a,b)=>a-b);
+      setWeekList(weeks);
+      if(weeks.length>0){
+        // start at latest week
+        setCurrentWeekNum(weeks[weeks.length - 1]);
+      }else{
+        setCurrentWeekNum(0);
+      }
+   
+
+    } catch(err){
+      console.log(err);
+    }
+  };
+
+  const goToPreviousWeek = () => {
+    const index = weekList.indexOf(currentWeekNum);
+
+    if (index > 0) {
+      const targetWeek = weekList[index - 1];
+      setCurrentWeekNum(targetWeek);
+
+      const filtered = getThisWeekWorkouts(currentYear, targetWeek);
+      setThisWeekWorkouts(filtered);
+    }
+  };
+
+  const goToNextWeek = () => {
+    const index = weekList.indexOf(currentWeekNum);
+
+    if (index < weekList.length - 1) {
+      const targetWeek = weekList[index + 1];
+      setCurrentWeekNum(targetWeek);
+
+      const filtered = getThisWeekWorkouts(currentYear, targetWeek);
+      setThisWeekWorkouts(filtered);
+    }
+  };
+
+  const currentIndex = weekList.indexOf(currentWeekNum);
+
+  const hasPrevious = currentIndex > 0;
+  const hasNext = currentIndex < weekList.length - 1;
+
   // Seed sample data into localStorage if it is empty
   useEffect(() => {
     if (!localStorage.getItem("workout_logs")) {
@@ -52,7 +107,7 @@ function HomePage() {
       ];
 
       const demoData = [];
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 10; i++) {
         const workout = new Workout(sampleExercises.slice(i, i + 5));
         workout.createDate = new Date(Date.now() - i * 86400000).toLocaleDateString("en-US");
         workout.NumOfWeek = getWeekNumber(new Date(Date.now() - i * 86400000));
@@ -69,6 +124,11 @@ function HomePage() {
     const filtered = getThisWeekWorkouts(currentYear, currentWeek);
     setThisWeekWorkouts(filtered);
   }, [currentWeek, currentYear]);
+
+  //load all the weekNum from localStorage
+  useEffect(() => {
+    getWeekList();
+  }, []);
 
   // Compute summary automatically
   useEffect(() => {
@@ -110,6 +170,8 @@ function HomePage() {
   const clearLogs = () => {
     localStorage.removeItem("workout_logs");
     setThisWeekWorkouts([]);
+    setWeekList([]);
+    setCurrentWeekNum(0);
   };
 
   return (
@@ -117,7 +179,7 @@ function HomePage() {
       <h1>Exercise, yet?</h1>
 
       <div className="summary-section mb-5">
-        <h2 className="fw-bold">Week {currentWeek} Overview</h2>
+        <h2 className="fw-bold">Week {currentWeekNum} Overview</h2>
 
         <div className="d-flex justify-content-center gap-4 mt-3">
           <div className="stat-box">
@@ -181,6 +243,26 @@ function HomePage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Button to load other week data */}
+      <div className="">
+        {hasPrevious && (
+          <Button
+            onClick={goToPreviousWeek}
+            className="position-fixed top-50 start-0 translate-middle-y ms-5"
+          >
+            ←
+          </Button>
+        )}
+        {hasNext && (
+          <Button
+            onClick={goToNextWeek}
+            className="position-fixed top-50 end-0 translate-middle-y me-5"
+          >
+            →
+          </Button>
+        )}
       </div>
     </div>
   );
